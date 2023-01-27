@@ -3,7 +3,7 @@
 bool sendData() {
 
   if(WiFi.status() != WL_CONNECTED) {
-    sendConnectionErrorToDisplay();
+    connectionIcon.setPic(5);
     return 0;
   }
 
