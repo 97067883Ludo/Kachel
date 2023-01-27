@@ -47,18 +47,23 @@ int buzzerPin = D1;
 bool buzzerState = false;
 
 bool Auto = true;
+bool Auto2 = true;
 
 const char* ssid     = "Team_Deventer";
 const char* password = "01012018Madrid";
 
-void auto_manPushCallBack(void *ptr)
+void auto_manPopCallBack(void *ptr)
 {
+
+  Serial.println("start pop");
   Auto = !Auto;
     if(Auto) {
       auto_man.setPic(11);
+      Serial.println("aan");
       return;
     }
     auto_man.setPic(10);
+    Serial.println("uit");
 }
 
 void setup() {
@@ -66,7 +71,7 @@ void setup() {
   Serial.begin(9600);
 
   nexInit();
-  auto_man.attachPop(auto_manPushCallBack);
+  auto_man.attachPop(auto_manPopCallBack);
   pinMode(pump, OUTPUT);
   digitalWrite(pump, LOW);
   delay(10);
@@ -103,7 +108,6 @@ void loop() {
   if((millis() - lastTimeDataSend) > sendDataDelay && wifiConneciton == 1) {
     
     sendData();
-    nexLoop(nex_listen_list);
     lastTimeDataSend = millis();
   }
 
@@ -111,6 +115,7 @@ void loop() {
     turnPumpOn();
   }
 
+  delay(500);
 }
 
 void manageTemperature() 
@@ -136,7 +141,6 @@ void manageTemperature()
     emControl = false;
   }
   
-
   if(diff > onTreshHold && !pumpState) {
     turnPumpOn();
     return;
