@@ -5,8 +5,8 @@
 1. D1 -> buzzer
 2. D2 -> Tempsensor
 3. D3 -> PumpRelay
-4. D5 -> Rx -> From display
-5. D6 -> Tx -> To display
+4. D5 -> Rx -> Van display
+5. D6 -> Tx -> Naar display
 
 De pomp schakelt in bij een verschil van 5 °C.
 De temperatuur wordt ook verzonden naar een api dit gebeurt elke 5 seconden aangegeven met de variabel: *sendDataDelay*. voor de *api call* is WiFi verbinding nodig. dit wordt opgezet bij het opstarten van het systeem. Als er geen WiFi verbinding kan worden gemaakt wordt het process afgebroken en probeert het systeem dit na 10 minuten nogmaals. Je kunt op het HMI zien of er wifi verbinding is dit is aangeduid met het WiFi icoon.
