@@ -4,12 +4,28 @@
 #include <ArduinoJson.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include "Nextion.h"
+SoftwareSerial HMISerial(D5, D6);
 
 const int oneWireBus = 4;
 OneWire oneWire(oneWireBus);
 DallasTemperature sensors(&oneWire);
 
-String baseUrl = "http://192.168.2.49:80/api/";
+NexText boiler = NexText(0, 2, "boiler");
+NexText kachel = NexText(0, 3, "kachel");
+NexPicture auto_man = NexPicture(0, 7, "auto_man");
+NexPicture wifiIcon = NexPicture(0, 5, "p1");
+NexPicture connectionIcon = NexPicture(0, 5, "p2");
+NexPicture pumpNex = NexPicture(0, 6, "pump");
+NexText EMControl = NexText(0,8, "EMControl");
+
+NexTouch *nex_listen_list[] = 
+{
+    &auto_man,
+    NULL
+};
+
+String baseUrl = "http://192.168.2.49:3000/post";
 
 unsigned long lastTimeDataSend = 0;
 unsigned long sendDataDelay = 5000;
@@ -22,29 +38,47 @@ float onTreshHold = 10.00;
 float offTreshHold = 5.00;
 int pump = D3;
 bool pumpState = false;
-bool enterdDangerZone = false;
+bool emControl = false;
 
 float returnSensor = 0.00;
 float boilerSensor = 0.00;
 
 int buzzerPin = D1;
+bool buzzerState = false;
+
+bool Auto = true;
 
 const char* ssid     = "Team_Deventer";
 const char* password = "01012018Madrid";
 
+void auto_manPushCallBack(void *ptr)
+{
+  Auto = !Auto;
+    if(Auto) {
+      auto_man.setPic(11);
+      return;
+    }
+    auto_man.setPic(10);
+}
+
 void setup() {
   
-  Serial.begin(115200);
+  Serial.begin(9600);
+
+  nexInit();
+  auto_man.attachPop(auto_manPushCallBack);
   pinMode(pump, OUTPUT);
   digitalWrite(pump, LOW);
   delay(10);
   Serial.println('\n');
   sensors.begin();
   getTemperature();
+
   if(setupWifiConnection()){
     wifiConneciton = 1;
     Serial.println("wifi connected");
     Serial.println(WiFi.localIP());
+    wifiIcon.setPic(6);
   } else {
     wifiConneciton = 0;
   }
@@ -52,23 +86,29 @@ void setup() {
 }
 
 void loop() {
+  nexLoop(nex_listen_list);
   getTemperature();
 
-  if((millis() - lastTimeRefreshSensor) > toneDelay && enterdDangerZone) {
-    tone(buzzerPin, 1000, 500);
-    lastTimeRefreshSensor = millis();
+  if((millis() - lastTimeToneDelay) > toneDelay && emControl) {
+    tone(buzzerPin, 2000, 500);
+    lastTimeToneDelay = millis();
   }
 
-  if((millis() - lastTimeRefreshSensor) > refreshSensorsDelay) {
-
+  if((millis() - lastTimeRefreshSensor) > refreshSensorsDelay && Auto) {
     manageTemperature();
     lastTimeRefreshSensor = millis();
+    sendDataToDisplay();
   }
 
   if((millis() - lastTimeDataSend) > sendDataDelay && wifiConneciton == 1) {
     
     sendData();
+    nexLoop(nex_listen_list);
     lastTimeDataSend = millis();
+  }
+
+  if(!Auto) {
+    turnPumpOn();
   }
 
 }
@@ -77,11 +117,12 @@ void manageTemperature()
 {
   float diff = measureDifferenceBetweenSensors();
   Serial.println(diff);
+
   
   if(returnSensor >= 80.00 || boilerSensor >= 80.00) {
-    Serial.print("test");
+    EMControl.setText("EMControl");
     turnPumpOn();
-    enterdDangerZone = true;
+    emControl = true;
     return;
   }
 
@@ -90,8 +131,9 @@ void manageTemperature()
     return;
   }
 
-  if(returnSensor < 70.00 || boilerSensor < 70.00 && enterdDangerZone) {
-    enterdDangerZone = false;
+  if(returnSensor < 70.00 || boilerSensor < 70.00 && emControl) {
+    EMControl.setText(" ");
+    emControl = false;
   }
   
 
@@ -114,19 +156,27 @@ void getTemperature() {
 }
 
 float measureDifferenceBetweenSensors() {
-  Serial.println(returnSensor);
-  Serial.println(boilerSensor);
   return returnSensor - boilerSensor;
 }
 
 void turnPumpOn() {
+  pumpNex.setPic(8);
   digitalWrite(pump, HIGH);
   pumpState = true;
 }
 
 void turnPumpOff() {
+  pumpNex.setPic(9);
   digitalWrite(pump, LOW);
   pumpState = false;
 }
 
-
+void sendDataToDisplay() {
+  char Boiler[5];
+  char Return[5];
+  dtostrf(returnSensor, 4, 1, Return);
+  dtostrf(boilerSensor, 4, 1, Boiler);
+  boiler.setText(Boiler);
+  kachel.setText(Return);
+  Serial.println(Return); 
+}
